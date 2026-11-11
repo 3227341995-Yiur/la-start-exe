@@ -1,7 +1,10 @@
 {
   "name": "la-start-exe",
   "version": "1.0.0",
-  "keywords": ["cordis", "lucky-app"],
+  "keywords": [
+    "cordis",
+    "lucky-app"
+  ],
   "private": true,
   "type": "module",
   "main": "lib/node.js",
@@ -24,7 +27,7 @@
     "@types/node": "^24.0.0",
     "@vitejs/plugin-vue": "^6.0.10",
     "element-plus": "^2.14.7",
-    "@lucky-apps/plugin-api": "github:3227341995-Yiur/lucky-apps#path:/packages/sdk/plugin-api",
+    "@lucky-apps/plugin-api": "^1.0.0",
     "typescript": "^5.9.0",
     "vite": "^8.3.5",
     "vue": "^3.5.44"
