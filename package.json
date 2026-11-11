@@ -1,0 +1,43 @@
+{
+  "name": "la-start-exe",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "lib/node.js",
+  "exports": {
+    ".": "./lib/node.js",
+    "./client": "./lib/client.js"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "build:client": "vite build",
+    "dev": "vite build --watch"
+  },
+  "devDependencies": {
+    "@element-plus/icons-vue": "^2.3.2",
+    "@types/node": "^24.0.0",
+    "@vitejs/plugin-vue": "^6.0.10",
+    "element-plus": "^2.14.7",
+    "plugin-api": "file:../week-report-vue/packages/sdk/plugin-api",
+    "typescript": "^5.9.0",
+    "vite": "^8.3.5",
+    "vue": "^3.5.44"
+  },
+  "weekReport": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "entry": "./lib/client.js"
+    },
+    "kind": "feature"
+  },
+  "allowScripts": {
+    "esbuild": true
+  }
+}
