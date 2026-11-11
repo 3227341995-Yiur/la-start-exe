@@ -20,7 +20,8 @@
   "scripts": {
     "build": "vite build",
     "build:client": "vite build",
-    "dev": "vite build --watch"
+    "dev": "vite build --watch",
+    "prepare": "pnpm build"
   },
   "devDependencies": {
     "@element-plus/icons-vue": "^2.3.2",
