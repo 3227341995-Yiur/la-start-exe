@@ -47,6 +47,38 @@ function appMenuCommand(command: string, app: LauncherApp) {
   else if (command === 'delete') deleteApp(app)
 }
 
+// 右键菜单渲染在卡片内部（不再用挂到 body 的 el-dropdown）
+const cardMenu = ref<{ kind: 'folder' | 'app'; id: number; x: number; y: number } | null>(null)
+
+function openCardMenu(event: MouseEvent, kind: 'folder' | 'app', item: { id: number }) {
+  event.preventDefault()
+  event.stopPropagation()
+  const host = event.currentTarget as HTMLElement
+  const rect = host.getBoundingClientRect()
+  const x = event.clientX - rect.left
+  const y = event.clientY - rect.top
+  cardMenu.value = {
+    kind,
+    id: item.id,
+    x: kind === 'folder' ? Math.min(x, rect.width - 148) : x,
+    y: kind === 'folder' ? Math.min(y, rect.height - 168) : y,
+  }
+}
+
+function closeCardMenu() {
+  cardMenu.value = null
+}
+
+function runFolderCommand(command: string, folder: LauncherFolder) {
+  closeCardMenu()
+  folderMenuCommand(command, folder)
+}
+
+function runAppCommand(command: string, app: LauncherApp) {
+  closeCardMenu()
+  appMenuCommand(command, app)
+}
+
 function hasRealIcon(app: LauncherApp) {
   return Boolean(app.path) && !failedIcons.value.has(app.path)
 }
@@ -386,14 +418,22 @@ function bindTauriDragDrop() {
   } catch {}
 }
 
+function handleGlobalKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') closeCardMenu()
+}
+
 onMounted(() => {
   load()
   bindTauriDragDrop()
+  document.addEventListener('click', closeCardMenu)
+  document.addEventListener('keydown', handleGlobalKeydown)
 })
 
 onBeforeUnmount(() => {
   try { unbindDragDrop?.() } catch {}
   unbindDragDrop = null
+  document.removeEventListener('click', closeCardMenu)
+  document.removeEventListener('keydown', handleGlobalKeydown)
 })
 </script>
 
@@ -465,78 +505,77 @@ onBeforeUnmount(() => {
         <!-- 文件夹总览 -->
         <template v-if="!activeFolder">
           <div v-if="!loading" class="folder-grid">
-            <el-dropdown
+            <article
               v-for="folder in folders"
               :key="folder.id"
-              trigger="contextmenu"
-              placement="bottom"
-              @command="command => folderMenuCommand(command, folder)"
+              class="folder-card"
+              @click="openFolder(folder)"
+              @contextmenu.prevent.stop="openCardMenu($event, 'folder', folder)"
             >
-              <article
-                class="folder-card"
-                @click="openFolder(folder)"
-              >
-                <div class="folder-card-head">
-                  <div class="folder-heading">
-                    <h3 class="folder-title">{{ folder.title }}</h3>
-                    <span class="folder-count">{{ folder.apps.length }} 个应用</span>
-                  </div>
-                  <el-button
-                    text
-                    circle
-                    size="small"
-                    :title="`启动全部（${folder.apps.length}）`"
-                    :aria-label="`启动全部（${folder.apps.length}）`"
-                    :disabled="!folder.apps.length"
-                    @click.stop="launchFolder(folder)"
-                  >
-                    <el-icon :size="15"><VideoPlay /></el-icon>
-                  </el-button>
+              <div class="folder-card-head">
+                <div class="folder-heading">
+                  <h3 class="folder-title">{{ folder.title }}</h3>
+                  <span class="folder-count">{{ folder.apps.length }} 个应用</span>
                 </div>
+                <el-button
+                  text
+                  circle
+                  size="small"
+                  :title="`启动全部（${folder.apps.length}）`"
+                  :aria-label="`启动全部（${folder.apps.length}）`"
+                  :disabled="!folder.apps.length"
+                  @click.stop="launchFolder(folder)"
+                >
+                  <el-icon :size="15"><VideoPlay /></el-icon>
+                </el-button>
+              </div>
 
-                <div class="folder-icons">
-                  <button
-                    v-for="app in folder.apps.slice(0, 9)"
-                    :key="app.id"
-                    type="button"
-                    class="folder-icon"
-                    :title="`启动 ${app.title}`"
-                    @click.stop="launchOne(app)"
-                  >
-                    <img
-                      v-if="hasRealIcon(app)"
-                      class="folder-icon-img"
-                      :src="iconUrl(app.path)"
-                      alt=""
-                      @error="markIconFailed(app.path)"
-                    />
-                    <el-icon v-else :size="22"><component :is="iconOf(app)" /></el-icon>
-                  </button>
-                  <span
-                    v-for="n in Math.max(0, 9 - folder.apps.length)"
-                    :key="`empty-${n}`"
-                    class="folder-icon is-empty"
+              <div class="folder-icons">
+                <button
+                  v-for="app in folder.apps.slice(0, 9)"
+                  :key="app.id"
+                  type="button"
+                  class="folder-icon"
+                  :title="`启动 ${app.title}`"
+                  @click.stop="launchOne(app)"
+                >
+                  <img
+                    v-if="hasRealIcon(app)"
+                    class="folder-icon-img"
+                    :src="iconUrl(app.path)"
+                    alt=""
+                    @error="markIconFailed(app.path)"
                   />
-                </div>
-              </article>
+                  <el-icon v-else :size="22"><component :is="iconOf(app)" /></el-icon>
+                </button>
+                <span
+                  v-for="n in Math.max(0, 9 - folder.apps.length)"
+                  :key="`empty-${n}`"
+                  class="folder-icon is-empty"
+                />
+              </div>
 
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item command="open">
-                    <el-icon><FolderOpened /></el-icon>打开
-                  </el-dropdown-item>
-                  <el-dropdown-item command="launch-all">
-                    <el-icon><VideoPlay /></el-icon>启动全部
-                  </el-dropdown-item>
-                  <el-dropdown-item command="rename">
-                    <el-icon><Edit /></el-icon>重命名
-                  </el-dropdown-item>
-                  <el-dropdown-item command="delete" divided>
-                    <el-icon><Delete /></el-icon>删除
-                  </el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
+              <div
+                v-if="cardMenu?.kind === 'folder' && cardMenu.id === folder.id"
+                class="card-menu folder-menu"
+                :style="{ left: `${cardMenu.x}px`, top: `${cardMenu.y}px` }"
+                @click.stop
+                @contextmenu.prevent
+              >
+                <button type="button" @click.stop="runFolderCommand('open', folder)">
+                  <el-icon><FolderOpened /></el-icon><span>打开</span>
+                </button>
+                <button type="button" @click.stop="runFolderCommand('launch-all', folder)">
+                  <el-icon><VideoPlay /></el-icon><span>启动全部</span>
+                </button>
+                <button type="button" @click.stop="runFolderCommand('rename', folder)">
+                  <el-icon><Edit /></el-icon><span>重命名</span>
+                </button>
+                <button type="button" class="danger" @click.stop="runFolderCommand('delete', folder)">
+                  <el-icon><Delete /></el-icon><span>删除</span>
+                </button>
+              </div>
+            </article>
           </div>
         </template>
 
@@ -544,50 +583,48 @@ onBeforeUnmount(() => {
         <template v-else>
           <div class="folder-view">
             <div class="app-grid">
-              <el-dropdown
+              <article
                 v-for="app in activeFolder.apps"
                 :key="app.id"
-                trigger="contextmenu"
-                placement="bottom"
-                @command="command => appMenuCommand(command, app)"
+                class="app-tile"
+                :title="`双击启动 · 右键更多\n${app.path}`"
+                @dblclick="launchOne(app)"
+                @contextmenu.prevent.stop="openCardMenu($event, 'app', app)"
               >
-                <article
-                  class="app-tile"
-                  :title="`双击启动 · 右键更多\n${app.path}`"
-                  @dblclick="launchOne(app)"
-                >
-                  <span class="app-icon">
-                    <img
-                      v-if="hasRealIcon(app)"
-                      class="app-img"
-                      :src="iconUrl(app.path)"
-                      alt=""
-                      @error="markIconFailed(app.path)"
-                    />
-                    <el-icon v-else :size="22"><component :is="iconOf(app)" /></el-icon>
-                  </span>
-                  <div class="app-meta">
-                    <span class="app-title">{{ app.title }}</span>
-                  </div>
-                </article>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item command="launch">
-                      <el-icon><VideoPlay /></el-icon>启动
-                    </el-dropdown-item>
-                    <el-dropdown-item command="edit">
-                      <el-icon><Edit /></el-icon>编辑
-                    </el-dropdown-item>
-                    <el-dropdown-item command="reveal">
-                      <el-icon><FolderOpened /></el-icon>打开位置
-                    </el-dropdown-item>
-                    <el-dropdown-item command="delete" divided>
-                      <el-icon><Delete /></el-icon>删除
-                    </el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
+                <span class="app-icon">
+                  <img
+                    v-if="hasRealIcon(app)"
+                    class="app-img"
+                    :src="iconUrl(app.path)"
+                    alt=""
+                    @error="markIconFailed(app.path)"
+                  />
+                  <el-icon v-else :size="22"><component :is="iconOf(app)" /></el-icon>
+                </span>
+                <div class="app-meta">
+                  <span class="app-title">{{ app.title }}</span>
+                </div>
 
+                <div
+                  v-if="cardMenu?.kind === 'app' && cardMenu.id === app.id"
+                  class="card-menu app-menu"
+                  @click.stop
+                  @contextmenu.prevent
+                >
+                  <button type="button" @click.stop="runAppCommand('launch', app)">
+                    <el-icon><VideoPlay /></el-icon><span>启动</span>
+                  </button>
+                  <button type="button" @click.stop="runAppCommand('edit', app)">
+                    <el-icon><Edit /></el-icon><span>编辑</span>
+                  </button>
+                  <button type="button" @click.stop="runAppCommand('reveal', app)">
+                    <el-icon><FolderOpened /></el-icon><span>位置</span>
+                  </button>
+                  <button type="button" class="danger" @click.stop="runAppCommand('delete', app)">
+                    <el-icon><Delete /></el-icon><span>删除</span>
+                  </button>
+                </div>
+              </article>
             </div>
 
             <p v-if="!activeFolder.apps.length" class="folder-empty-hint">
@@ -597,14 +634,13 @@ onBeforeUnmount(() => {
         </template>
       </div>
 
-      <el-dialog
+      <AppDialog
         v-model="editOpen"
         title="编辑应用"
+        subtitle="修改名称、路径、启动参数与延迟"
+        icon="Edit"
         width="460px"
-        align-center
-        append-to-body
-        destroy-on-close
-        class="start-edit-dialog"
+        show-footer
       >
         <el-form label-position="top" @submit.prevent>
           <el-form-item label="名称">
@@ -634,7 +670,7 @@ onBeforeUnmount(() => {
           <el-button @click="editOpen = false">取消</el-button>
           <el-button type="primary" @click="saveEdit">保存</el-button>
         </template>
-      </el-dialog>
+      </AppDialog>
 
       <transition name="drop-fade">
         <div v-if="dragOver" class="drop-overlay">
@@ -851,19 +887,109 @@ onBeforeUnmount(() => {
   object-fit: contain;
 }
 
-/* el-dropdown 包装后要撑满网格单元，否则间距/宽度会塌 */
-.folder-grid > .el-dropdown {
-  display: block;
-  width: 240px;
+/* 右键菜单直接长在卡片里 */
+.card-menu {
+  position: absolute;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 132px;
+  padding: 6px;
+  border: 1px solid color-mix(in srgb, var(--el-color-primary) 18%, var(--el-border-color-lighter));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--el-bg-color) 82%, transparent);
+  backdrop-filter: blur(16px) saturate(1.4);
+  box-shadow:
+    0 20px 40px -22px rgba(15, 23, 42, 0.55),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  transform-origin: top left;
+  animation: card-menu-pop 0.16s cubic-bezier(0.22, 1.4, 0.36, 1);
 }
 
-.app-grid > .el-dropdown {
-  display: block;
-  min-width: 0;
-}
-
-.app-grid > .el-dropdown > .app-tile {
+.card-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--el-text-color-regular);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, transform 0.12s ease;
+}
+
+.card-menu button:hover {
+  background: var(--el-color-primary-light-9);
+  color: var(--el-color-primary);
+  transform: translateX(2px);
+}
+
+.card-menu button.danger {
+  color: var(--el-color-danger);
+}
+
+.card-menu button.danger:hover {
+  background: var(--el-color-danger-light-9);
+}
+
+.card-menu .el-icon {
+  font-size: 14px;
+}
+
+.folder-menu {
+  width: 132px;
+}
+
+.app-menu {
+  inset: 5px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  min-width: 0;
+  padding: 5px;
+  animation-name: card-menu-fade;
+}
+
+.app-menu button {
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 2px;
+  border-radius: 10px;
+  font-size: 10px;
+  text-align: center;
+}
+
+.app-menu button:hover {
+  transform: translateY(-1px);
+}
+
+@keyframes card-menu-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes card-menu-fade {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .app-grid {
@@ -1018,14 +1144,6 @@ onBeforeUnmount(() => {
 .drop-fade-enter-from,
 .drop-fade-leave-to {
   opacity: 0;
-}
-
-:global(.start-edit-dialog.el-dialog) {
-  border-radius: 16px;
-}
-
-:global(.start-edit-dialog .el-dialog__body) {
-  padding-top: 8px;
 }
 
 @media (max-width: 860px) {
