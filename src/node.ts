@@ -416,7 +416,7 @@ export async function apply(ctx?: any) {
   } catch (error) {
     console.error('[la-start-exe] 本地服务启动失败:', (error as Error).message)
   }
-  ctx?.on?.('dispose', () => {
+  ctx?.effect?.(() => () => {
     activeMounts = Math.max(0, activeMounts - 1)
     if (activeMounts > 0) return
     closeTimer = setTimeout(() => {
