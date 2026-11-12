@@ -1,7 +1,6 @@
-import { definePlugin, navigation } from '@lucky-apps/plugin-api'
 import StartExePage from './StartExePage.vue'
 
-export default definePlugin({
+export default {
   name: 'la-start-exe',
   inject: ['navigation'],
   apply(ctx) {
@@ -13,4 +12,4 @@ export default definePlugin({
       component: StartExePage,
     })
   }
-})
+}
