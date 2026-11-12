@@ -87,6 +87,9 @@ const editOpen = ref(false)
 const editingId = ref<number | null>(null)
 const editForm = reactive({ title: '', path: '', args: '', delay: 0 })
 
+const renameOpen = ref(false)
+const renameForm = reactive({ id: 0, title: '' })
+
 let idSeq = 0
 function nextId() {
   idSeq = (idSeq + 1) % 1000
@@ -338,17 +341,23 @@ async function launchFolder(folder: LauncherFolder) {
   }
 }
 
-async function renameFolder(folder: LauncherFolder) {
-  try {
-    const { value } = await ElMessageBox.prompt('文件夹名称', '重命名文件夹', {
-      inputValue: folder.title,
-      confirmButtonText: '保存',
-      cancelButtonText: '取消',
-      inputValidator: (val: string) => (val && val.trim() ? true : '名称不能为空'),
-    })
-    folder.title = String(value || '').trim()
-    await persist()
-  } catch {}
+function renameFolder(folder: LauncherFolder) {
+  renameForm.id = folder.id
+  renameForm.title = folder.title
+  renameOpen.value = true
+}
+
+async function saveRename() {
+  const title = renameForm.title.trim()
+  if (!title) {
+    ElMessage.warning('名称不能为空')
+    return
+  }
+  const folder = folders.value.find(item => item.id === renameForm.id)
+  if (!folder) return
+  folder.title = title
+  renameOpen.value = false
+  await persist()
 }
 
 async function removeFolder(folder: LauncherFolder) {
@@ -642,33 +651,62 @@ onBeforeUnmount(() => {
         width="460px"
         show-footer
       >
-        <el-form label-position="top" @submit.prevent>
-          <el-form-item label="名称">
-            <el-input v-model="editForm.title" placeholder="应用名称" />
-          </el-form-item>
-          <el-form-item label="路径">
-            <el-input v-model="editForm.path" readonly placeholder="选择可执行文件">
-              <template #append>
-                <el-button @click="choosePath">选择</el-button>
-              </template>
-            </el-input>
-          </el-form-item>
-          <el-form-item label="启动参数">
-            <el-input v-model="editForm.args" placeholder="可选，空格分隔" />
-          </el-form-item>
-          <el-form-item label="延迟（毫秒）">
-            <el-input-number
-              v-model="editForm.delay"
-              :min="0"
-              :step="500"
-              controls-position="right"
-              style="width: 100%"
-            />
-          </el-form-item>
-        </el-form>
+        <div class="dialog-form">
+          <el-form label-position="top" class="dialog-form-el" @submit.prevent>
+            <el-form-item label="名称">
+              <el-input v-model="editForm.title" placeholder="应用名称" />
+            </el-form-item>
+            <el-form-item label="路径">
+              <el-input v-model="editForm.path" readonly placeholder="选择可执行文件">
+                <template #append>
+                  <el-button @click="choosePath">选择</el-button>
+                </template>
+              </el-input>
+            </el-form-item>
+            <el-form-item label="启动参数">
+              <el-input v-model="editForm.args" placeholder="可选，空格分隔" />
+            </el-form-item>
+            <el-form-item label="延迟（毫秒）">
+              <el-input-number
+                v-model="editForm.delay"
+                :min="0"
+                :step="500"
+                controls-position="right"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-form>
+        </div>
         <template #footer>
           <el-button @click="editOpen = false">取消</el-button>
           <el-button type="primary" @click="saveEdit">保存</el-button>
+        </template>
+      </AppDialog>
+
+      <AppDialog
+        v-model="renameOpen"
+        title="重命名文件夹"
+        subtitle="修改启动台中的文件夹名称"
+        icon="Edit"
+        width="420px"
+        show-footer
+      >
+        <div class="dialog-form">
+          <el-form label-position="top" class="dialog-form-el" @submit.prevent>
+            <el-form-item label="文件夹名称">
+              <el-input
+                v-model="renameForm.title"
+                placeholder="文件夹名称"
+                maxlength="40"
+                show-word-limit
+                @keyup.enter="saveRename"
+              />
+            </el-form-item>
+          </el-form>
+        </div>
+        <template #footer>
+          <el-button @click="renameOpen = false">取消</el-button>
+          <el-button type="primary" @click="saveRename">保存</el-button>
         </template>
       </AppDialog>
 
@@ -726,6 +764,15 @@ onBeforeUnmount(() => {
 
 .start-body {
   min-height: 240px;
+}
+
+/* 统一使用宿主 AppDialog，内容留白与表单底部间距对齐 */
+.dialog-form {
+  padding: 18px 20px 4px;
+}
+
+.dialog-form-el :deep(.el-form-item:last-child) {
+  margin-bottom: 0;
 }
 
 /* ============================================================
