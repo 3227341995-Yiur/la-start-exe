@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { AppDialog } from '@lucky-apps/client-ui'
 import {
   ArrowRight,
   Back,
@@ -678,7 +679,6 @@ onBeforeUnmount(() => {
           </el-form>
         </div>
         <template #footer>
-          <el-button @click="editOpen = false">取消</el-button>
           <el-button type="primary" @click="saveEdit">保存</el-button>
         </template>
       </AppDialog>
@@ -705,7 +705,6 @@ onBeforeUnmount(() => {
           </el-form>
         </div>
         <template #footer>
-          <el-button @click="renameOpen = false">取消</el-button>
           <el-button type="primary" @click="saveRename">保存</el-button>
         </template>
       </AppDialog>

@@ -14,7 +14,8 @@ Lucky Apps 外部插件：启动台。把常用应用收进文件夹，一键按
 - **Node half**（`src/node.ts`）：读写启动台数据、Windows 文件选择器、按顺序启动进程、
   打开回收站 / 文件位置、按需把 exe 图标提取为 PNG。通过本地 HTTP `/rpc`（token 校验）暴露给前端。
 - **Client half**（`src/StartExePage.vue`）：导航页「启动台」，文件夹卡片、文件夹详情、
-  拖拽添加、应用编辑、批量启动。编辑与重命名弹窗使用宿主统一的 `AppDialog`，与系统其他弹窗样式一致。
+  拖拽添加、应用编辑、批量启动。编辑与重命名弹窗使用 `@lucky-apps/client-ui` 的 `AppDialog`；
+  构建时标为 external，运行时由宿主 `window.__ModuleLoader__` staticModules 提供同一份宿主组件。
 - 数据文件：`%APPDATA%/com.lu.lucky-apps/start-exe.json`
   （可用 `WR_START_EXE_DATA` 覆盖）。服务端口 `38473`（可用 `WR_START_EXE_PORT` 覆盖）。
 
